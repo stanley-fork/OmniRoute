@@ -27,9 +27,18 @@ import {
   type GitLabDirectAccessDetails,
 } from "@/lib/oauth/gitlab";
 
+type OpenAIToolCall = {
+  id?: string;
+  type?: string;
+  function?: { name?: string; arguments?: string };
+};
+
 type OpenAIMessage = {
   role?: string;
   content?: unknown;
+  tool_calls?: OpenAIToolCall[];
+  tool_call_id?: string;
+  name?: string;
 };
 
 type JsonRecord = Record<string, unknown>;
@@ -70,33 +79,97 @@ function extractTextContent(content: unknown): string {
     .trim();
 }
 
-function buildPrompt(messages: OpenAIMessage[] | undefined): string {
+/**
+ * GitLab code_suggestions is a single-prompt completion API (no chat roles), so the
+ * OpenAI message array must be flattened to text.
+ *
+ * Simple conversations keep the legacy shape (system instructions + latest user message).
+ * But when the array carries a **tool exchange** — an assistant with `tool_calls` or a
+ * `tool` result message — the full conversation is serialized instead, folding each tool
+ * result back keyed by its `tool_call_id`. Without this, `buildPrompt` dropped the
+ * assistant/tool turns and re-derived a byte-identical turn-1 prompt, so the model kept
+ * re-emitting the same `<tool>` call forever (#6220). Complements the tool_call emission
+ * added in #6051.
+ */
+export function buildPrompt(messages: OpenAIMessage[] | undefined): string {
   if (!Array.isArray(messages)) return "";
 
-  const systemParts: string[] = [];
-  const userParts: string[] = [];
+  const hasToolExchange = messages.some((message) => {
+    const role = String(message?.role || "user").toLowerCase();
+    if (role === "tool") return true;
+    return (
+      role === "assistant" &&
+      Array.isArray(message?.tool_calls) &&
+      message.tool_calls.length > 0
+    );
+  });
 
+  const systemParts: string[] = [];
+
+  if (!hasToolExchange) {
+    // Legacy path — unchanged: system instructions + the latest user message.
+    const userParts: string[] = [];
+    for (const message of messages) {
+      const role = String(message?.role || "user").toLowerCase();
+      const text = extractTextContent(message?.content);
+      if (!text) continue;
+      if (role === "system" || role === "developer") {
+        systemParts.push(text);
+        continue;
+      }
+      if (role === "user") {
+        userParts.push(text);
+      }
+    }
+    const latestUserPrompt = userParts.at(-1) || "";
+    if (!systemParts.length) {
+      return latestUserPrompt;
+    }
+    return `System instructions:\n${systemParts.join("\n\n")}\n\n${latestUserPrompt}`.trim();
+  }
+
+  // Tool-exchange path — serialize the full turn history so the model sees the tool
+  // result and continues instead of repeating the tool call (#6220).
+  const convo: string[] = [];
   for (const message of messages) {
     const role = String(message?.role || "user").toLowerCase();
     const text = extractTextContent(message?.content);
-    if (!text) continue;
 
     if (role === "system" || role === "developer") {
-      systemParts.push(text);
+      if (text) systemParts.push(text);
       continue;
     }
-
     if (role === "user") {
-      userParts.push(text);
+      if (text) convo.push(`User: ${text}`);
+      continue;
+    }
+    if (role === "assistant") {
+      const lines: string[] = [];
+      if (text) lines.push(text);
+      const toolCalls = Array.isArray(message?.tool_calls) ? message.tool_calls : [];
+      for (const tc of toolCalls) {
+        const name = tc?.function?.name || "tool";
+        const args = tc?.function?.arguments ?? "";
+        const id = tc?.id ? ` [${tc.id}]` : "";
+        lines.push(`Called tool ${name}${id} with arguments: ${args}`);
+      }
+      if (lines.length) convo.push(`Assistant: ${lines.join("\n")}`);
+      continue;
+    }
+    if (role === "tool") {
+      const id = message?.tool_call_id ? ` for ${message.tool_call_id}` : "";
+      const name = message?.name ? ` (${message.name})` : "";
+      convo.push(`Tool result${name}${id}: ${text}`);
+      continue;
     }
   }
 
-  const latestUserPrompt = userParts.at(-1) || "";
-  if (!systemParts.length) {
-    return latestUserPrompt;
-  }
-
-  return `System instructions:\n${systemParts.join("\n\n")}\n\n${latestUserPrompt}`.trim();
+  const header = systemParts.length
+    ? `System instructions:\n${systemParts.join("\n\n")}\n\n`
+    : "";
+  return `${header}${convo.join(
+    "\n\n"
+  )}\n\nContinue the response using the tool result above; do not repeat the tool call.`.trim();
 }
 
 function toOpenAIError(status: number, message: string): Response {
