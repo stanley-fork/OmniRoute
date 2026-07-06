@@ -38,6 +38,7 @@ export interface AddApiKeyModalProps {
   isOpen: boolean;
   provider?: string;
   providerName?: string;
+  providerWebsite?: string;
   initialBaseUrl?: string;
   isCompatible?: boolean;
   isAnthropic?: boolean;
@@ -60,6 +61,7 @@ export default function AddApiKeyModal({
   isOpen,
   provider,
   providerName,
+  providerWebsite,
   initialBaseUrl,
   isCompatible,
   isAnthropic,
@@ -682,6 +684,7 @@ export default function AddApiKeyModal({
               <WebSessionCredentialGuide
                 requirement={webSessionCredential}
                 providerName={providerDisplayName}
+                providerWebsite={providerWebsite}
                 t={t}
               />
             )}
