@@ -77,6 +77,7 @@ export interface EditConnectionModalProps {
   isOpen: boolean;
   connection: EditConnectionModalConnection | null;
   providerId: string;
+  providerWebsite?: string;
   onSave: (data: unknown) => Promise<void | unknown>;
   /** Triggered after a successful save when the "import only free models" flag changed. */
   onResyncModels?: (connectionId: string) => void | Promise<void>;
@@ -89,6 +90,7 @@ export default function EditConnectionModal({
   isOpen,
   connection,
   providerId,
+  providerWebsite,
   onSave,
   onResyncModels,
   onClose,
@@ -806,6 +808,7 @@ export default function EditConnectionModal({
               <WebSessionCredentialGuide
                 requirement={webSessionCredential}
                 providerName={providerDisplayName}
+                providerWebsite={providerWebsite}
                 t={t}
               />
             )}
