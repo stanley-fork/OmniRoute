@@ -242,11 +242,6 @@
       "count": 1
     }
   },
-  "src/app/(dashboard)/dashboard/settings/components/ComboDefaultsTab.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
   "src/app/(dashboard)/dashboard/settings/components/ModelLockoutCard.tsx": {
     "react-hooks/exhaustive-deps": {
       "count": 1
@@ -1392,11 +1387,6 @@
       "count": 1
     }
   },
-  "tests/unit/executor-kiro.test.ts": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    }
-  },
   "tests/unit/executor-nlpcloud.test.ts": {
     "@typescript-eslint/no-explicit-any": {
       "count": 2
@@ -1565,11 +1555,6 @@
   "tests/unit/memory-summarization.test.ts": {
     "@typescript-eslint/no-explicit-any": {
       "count": 2
-    }
-  },
-  "tests/unit/messages-count-tokens-route.test.ts": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 4
     }
   },
   "tests/unit/mimocode-executor.test.ts": {
@@ -1979,7 +1964,7 @@
   },
   "tests/unit/response-sanitizer.test.ts": {
     "@typescript-eslint/no-explicit-any": {
-      "count": 84
+      "count": 83
     }
   },
   "tests/unit/responses-parse-once-4041.test.ts": {
@@ -2000,11 +1985,6 @@
   "tests/unit/safe-outbound-fetch.test.ts": {
     "@typescript-eslint/no-explicit-any": {
       "count": 9
-    }
-  },
-  "tests/unit/save-call-log-persistence.test.ts": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 7
     }
   },
   "tests/unit/schema-coercion.test.ts": {
